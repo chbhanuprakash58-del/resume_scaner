@@ -535,8 +535,12 @@ async def analyze_resume_and_jd(resume: UploadFile = File(...), jd: UploadFile =
         return JSONResponse({"error": str(e)}, status_code=500)
 
 # ------------------- HEALTH CHECK (for Render) -------------------
+# @app.get("/")
+# def root():
+#     return {"message": "✅ Resume Analyzer API is running successfully!"}
+
 @app.get("/")
-def root():
+async def root():
     return {"message": "✅ Resume Analyzer API is running successfully!"}
 
 # ------------------- RUN LOCALLY -------------------
