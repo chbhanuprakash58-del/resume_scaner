@@ -401,7 +401,9 @@ from pypdf import PdfReader
 from docx import Document
 import io
 import json
-from groq import Groq
+# from groq import Groq
+import groq
+
 from dotenv import load_dotenv
 
 # ------------------- LOAD ENVIRONMENT VARIABLES -------------------
@@ -411,7 +413,9 @@ groq_api_key = os.getenv("GROQ_API_KEY")  # Load your API key from .env
 if not groq_api_key:
     raise ValueError("GROQ_API_KEY not found. Please set it in .env")
 
-client = Groq(api_key=groq_api_key)
+# client = Groq(api_key=groq_api_key)
+client = groq.Client(api_key=os.getenv("GROQ_API_KEY"))
+
 
 # ------------------- INITIALIZE FASTAPI -------------------
 app = FastAPI(title="Resume and JD Analyzer API")
