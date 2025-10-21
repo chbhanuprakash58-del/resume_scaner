@@ -1,0 +1,128 @@
+# import streamlit as st
+# import requests
+
+# st.set_page_config(page_title="AI Resume Screening", layout="centered")
+# st.title("📄 AI Resume Screening Bot")
+
+# st.markdown(
+#     """
+# Upload your **Resume** (PDF or DOCX) and **Job Description** (PDF or DOCX), 
+# and the AI will analyze the match and give you a detailed report.
+# """
+# )
+
+# # Upload files
+# resume_file = st.file_uploader("Upload Resume (PDF or DOCX)", type=["pdf", "docx"])
+# jd_file = st.file_uploader("Upload Job Description (PDF or DOCX)", type=["pdf", "docx"])
+
+# if st.button("Analyze Resume"):
+#     if not resume_file or not jd_file:
+#         st.warning("Please upload both Resume and Job Description files.")
+#     else:
+#         with st.spinner("Analyzing... This may take a few seconds."):
+#             # Prepare files for POST request
+#             files = {
+#                 "resume": (resume_file.name, resume_file, resume_file.type),
+#                 "jd": (jd_file.name, jd_file, jd_file.type),
+#             }
+
+#             try:
+#                 # Call FastAPI endpoint
+#                 response = requests.post("http://127.0.0.1:8000/analyze/", files=files)
+#                 data = response.json()
+
+#                 if response.status_code != 200 or "error" in data:
+#                     st.error(data.get("error", "Unknown error occurred."))
+#                 else:
+#                     # Display results
+#                     st.success(f"✅ Match Score: {data['match_score']}%")
+
+#                     st.subheader("🟢 Matched Skills")
+#                     st.write(", ".join(data.get("matched_skills", [])))
+
+#                     st.subheader("🔴 Missing Skills")
+#                     st.write(", ".join(data.get("missing_skills", [])))
+
+#                     st.subheader("🧾 Summary")
+#                     st.write(data.get("summary", "No summary available."))
+
+#             except Exception as e:
+#                 st.error(f"An error occurred: {str(e)}")
+
+
+
+
+
+
+
+
+
+##### this is another genrated code###########
+
+
+import streamlit as st
+import requests
+import json
+
+# --- FastAPI Backend URL ---
+API_URL = "http://127.0.0.1:8000/analyze/"
+
+# --- Streamlit Page Setup ---
+st.set_page_config(page_title="AI Resume–JD Analyzer", page_icon="🧠", layout="centered")
+
+st.title("🧠 AI Resume–Job Description Analyzer")
+st.write("Upload your **Resume (PDF/DOCX)** and **Job Description (PDF/DOCX)** to analyze the match score, matched skills, and summary.")
+
+# --- File Uploads ---
+resume_file = st.file_uploader("📄 Upload Resume", type=["pdf", "docx"])
+jd_file = st.file_uploader("🧾 Upload Job Description", type=["pdf", "docx"])
+
+# --- Submit Button ---
+if st.button("🚀 Analyze"):
+    if not resume_file or not jd_file:
+        st.warning("Please upload both Resume and Job Description.")
+    else:
+        try:
+            # --- Prepare Files for API ---
+            files = {
+                "resume": (resume_file.name, resume_file.getvalue(), resume_file.type),
+                "jd": (jd_file.name, jd_file.getvalue(), jd_file.type),
+            }
+
+            # --- Send POST request to FastAPI ---
+            with st.spinner("Analyzing files... Please wait ⏳"):
+                response = requests.post(API_URL, files=files)
+            
+            # --- Handle API Response ---
+            if response.status_code == 200:
+                result = response.json()
+
+                st.success("✅ Analysis Complete!")
+
+                # --- Display Results ---
+                st.subheader("📊 Match Report")
+                st.metric("Match Score", f"{result.get('match_score', 0)}%")
+
+                st.subheader("✅ Matched Skills")
+                matched_skills = result.get("matched_skills", [])
+                if matched_skills:
+                    st.write(", ".join(matched_skills))
+                else:
+                    st.write("No matched skills found.")
+
+                st.subheader("⚠️ Missing Skills")
+                missing_skills = result.get("missing_skills", [])
+                if missing_skills:
+                    st.write(", ".join(missing_skills))
+                else:
+                    st.write("No missing skills found.")
+
+                st.subheader("🧾 Summary")
+                st.write(result.get("summary", "No summary available."))
+
+            else:
+                st.error(f"❌ API Error: {response.status_code}")
+                st.json(response.json())
+
+        except Exception as e:
+            st.error(f"⚠️ Something went wrong: {e}")
