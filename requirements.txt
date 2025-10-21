@@ -4,7 +4,7 @@ pypdf==3.12.2
 python-docx==1.0.0
 requests==2.32.1
 streamlit==1.28.0
-groq==0.0.4
+groq==0.33.0
 python-dotenv==1.0.1
 python-multipart==0.0.6
 numpy==1.26.4

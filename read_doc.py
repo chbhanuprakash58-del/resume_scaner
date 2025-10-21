@@ -414,9 +414,10 @@ if not groq_api_key:
     raise ValueError("GROQ_API_KEY not found. Please set it in .env")
 
 # client = Groq(api_key=groq_api_key)
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+# client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 # client = groq.Client(api_key=os.getenv("GROQ_API_KEY"))
 
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 # ------------------- INITIALIZE FASTAPI -------------------
 app = FastAPI(title="Resume and JD Analyzer API")
