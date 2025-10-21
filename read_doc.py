@@ -394,49 +394,48 @@
 ##############################   the updated code for creating link with render web app###################
 
 
+
 import os
+import io
+import json
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import JSONResponse
 from pypdf import PdfReader
 from docx import Document
-import io
-import json
 from groq import Groq
-# import groq
-
 from dotenv import load_dotenv
 
 # ------------------- LOAD ENVIRONMENT VARIABLES -------------------
-load_dotenv()  # Reads the .env file in the project root
+load_dotenv()  # Reads .env file if present
 
-groq_api_key = os.getenv("GROQ_API_KEY")  # Load your API key from .env
-if not groq_api_key:
-    raise ValueError("GROQ_API_KEY not found. Please set it in .env")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+if not GROQ_API_KEY:
+    raise ValueError("❌ GROQ_API_KEY not found. Please add it to your Render environment or .env file.")
 
-# client = Groq(api_key=groq_api_key)
-# client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-# client = groq.Client(api_key=os.getenv("GROQ_API_KEY"))
-
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+client = Groq(api_key=GROQ_API_KEY)
 
 # ------------------- INITIALIZE FASTAPI -------------------
 app = FastAPI(title="Resume and JD Analyzer API")
 
 # ------------------- TEXT EXTRACTION -------------------
 def extract_text_from_pdf(file_bytes):
+    """Extract text from PDF files."""
     reader = PdfReader(io.BytesIO(file_bytes))
     text = ""
     for page in reader.pages:
         text += page.extract_text() or ""
     return text.strip()
 
+
 def extract_text_from_docx(file_bytes):
+    """Extract text from DOCX files."""
     doc = Document(io.BytesIO(file_bytes))
     text = "\n".join([para.text for para in doc.paragraphs])
     return text.strip()
 
 # ------------------- AI ANALYSIS -------------------
 def analyze_with_groq(resume_text, jd_text):
+    """Send texts to Groq model and get analysis."""
     prompt = f"""
 You are an expert recruiter.
 
@@ -454,7 +453,7 @@ Tasks:
 3. List missing or weak skills.
 4. Explain why the score is high or low.
 
-IMPORTANT: Return output as valid JSON ONLY in this format:
+Return output as **valid JSON ONLY** in this format:
 
 {{
   "match_score": <integer>,
@@ -463,6 +462,7 @@ IMPORTANT: Return output as valid JSON ONLY in this format:
   "summary": "<explanation>"
 }}
 """
+
     response = client.chat.completions.create(
         messages=[{"role": "user", "content": prompt}],
         model="llama-3.3-70b-versatile",
@@ -470,6 +470,7 @@ IMPORTANT: Return output as valid JSON ONLY in this format:
 
     ai_output = response.choices[0].message.content.strip()
 
+    # Clean output if wrapped in code block
     if ai_output.startswith("```"):
         ai_output = ai_output.strip("`")
         if ai_output.lower().startswith("json"):
@@ -482,14 +483,17 @@ IMPORTANT: Return output as valid JSON ONLY in this format:
             "match_score": 0,
             "matched_skills": [],
             "missing_skills": [],
-            "summary": f"⚠️ AI did not return valid JSON. Raw output: {ai_output}"
+            "summary": f"⚠️ AI returned invalid JSON. Raw output: {ai_output}",
         }
+
     return result
 
 # ------------------- API ENDPOINT -------------------
 @app.post("/analyze/")
 async def analyze_resume_and_jd(resume: UploadFile = File(...), jd: UploadFile = File(...)):
+    """Main endpoint to analyze resume and job description."""
     try:
+        # --- Extract Resume ---
         resume_bytes = await resume.read()
         if resume.filename.endswith(".pdf"):
             resume_text = extract_text_from_pdf(resume_bytes)
@@ -498,6 +502,7 @@ async def analyze_resume_and_jd(resume: UploadFile = File(...), jd: UploadFile =
         else:
             return JSONResponse({"error": "Resume must be PDF or DOCX"}, status_code=400)
 
+        # --- Extract Job Description ---
         jd_bytes = await jd.read()
         if jd.filename.endswith(".pdf"):
             jd_text = extract_text_from_pdf(jd_bytes)
@@ -506,8 +511,10 @@ async def analyze_resume_and_jd(resume: UploadFile = File(...), jd: UploadFile =
         else:
             return JSONResponse({"error": "JD must be PDF or DOCX"}, status_code=400)
 
+        # --- Analyze with Groq ---
         ai_result = analyze_with_groq(resume_text, jd_text)
 
+        # --- Improve Summary ---
         if ai_result["match_score"] >= 80:
             ai_result["summary"] = "✅ Strong match: " + ai_result["summary"]
         else:
@@ -519,15 +526,20 @@ async def analyze_resume_and_jd(resume: UploadFile = File(...), jd: UploadFile =
             "match_score": ai_result["match_score"],
             "matched_skills": ai_result["matched_skills"],
             "missing_skills": ai_result["missing_skills"],
-            "summary": ai_result["summary"]
+            "summary": ai_result["summary"],
         }
 
-        return report
+        return JSONResponse(content=report)
 
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
 
-# ------------------- RUN FOR LOCAL TESTING -------------------
+# ------------------- HEALTH CHECK (for Render) -------------------
+@app.get("/")
+def root():
+    return {"message": "✅ Resume Analyzer API is running successfully!"}
+
+# ------------------- RUN LOCALLY -------------------
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
