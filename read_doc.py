@@ -259,6 +259,141 @@
 
 
 
+# import os
+# from fastapi import FastAPI, UploadFile, File
+# from fastapi.responses import JSONResponse
+# from pypdf import PdfReader
+# from docx import Document
+# import io
+# import json
+# from groq import Groq
+# import os
+# from dotenv import load_dotenv
+
+# # ------------------- LOAD ENVIRONMENT VARIABLES -------------------
+# load_dotenv()  # Reads the .env file in the project root
+
+# groq_api_key = os.getenv("GROQ_API_KEY")  # Load your API key from .env
+# if not groq_api_key:
+#     raise ValueError("GROQ_API_KEY not found. Please set it in .env")
+
+# client = Groq(api_key=groq_api_key)
+
+# # ------------------- INITIALIZE FASTAPI -------------------
+# app = FastAPI(title="Resume and JD Analyzer API")
+
+# # ------------------- TEXT EXTRACTION -------------------
+# def extract_text_from_pdf(file_bytes):
+#     reader = PdfReader(io.BytesIO(file_bytes))
+#     text = ""
+#     for page in reader.pages:
+#         text += page.extract_text() or ""
+#     return text.strip()
+
+# def extract_text_from_docx(file_bytes):
+#     doc = Document(io.BytesIO(file_bytes))
+#     text = "\n".join([para.text for para in doc.paragraphs])
+#     return text.strip()
+
+# # ------------------- AI ANALYSIS -------------------
+# def analyze_with_groq(resume_text, jd_text):
+#     prompt = f"""
+# You are an expert recruiter.
+
+# Compare the following Job Description and Resume.
+
+# Job Description:
+# {jd_text}
+
+# Resume:
+# {resume_text}
+
+# Tasks:
+# 1. Provide a match percentage (0-100).
+# 2. List key skills matched.
+# 3. List missing or weak skills.
+# 4. Explain why the score is high or low.
+
+# IMPORTANT: Return output as **valid JSON ONLY**, strictly in this format:
+
+# {{
+#   "match_score": <integer>,
+#   "matched_skills": ["skill1", "skill2"],
+#   "missing_skills": ["skill1", "skill2"],
+#   "summary": "<explanation>"
+# }}
+# """
+#     response = client.chat.completions.create(
+#         messages=[{"role": "user", "content": prompt}],
+#         model="llama-3.3-70b-versatile",
+#     )
+
+#     ai_output = response.choices[0].message.content.strip()
+
+#     if ai_output.startswith("```"):
+#         ai_output = ai_output.strip("`")
+#         if ai_output.lower().startswith("json"):
+#             ai_output = ai_output[4:].strip()
+
+#     try:
+#         result = json.loads(ai_output)
+#     except json.JSONDecodeError:
+#         result = {
+#             "match_score": 0,
+#             "matched_skills": [],
+#             "missing_skills": [],
+#             "summary": f"⚠️ AI did not return valid JSON. Raw output: {ai_output}"
+#         }
+#     return result
+
+# # ------------------- API ENDPOINT -------------------
+# @app.post("/analyze/")
+# async def analyze_resume_and_jd(resume: UploadFile = File(...), jd: UploadFile = File(...)):
+#     try:
+#         resume_bytes = await resume.read()
+#         if resume.filename.endswith(".pdf"):
+#             resume_text = extract_text_from_pdf(resume_bytes)
+#         elif resume.filename.endswith(".docx"):
+#             resume_text = extract_text_from_docx(resume_bytes)
+#         else:
+#             return JSONResponse({"error": "Resume must be PDF or DOCX"}, status_code=400)
+
+#         jd_bytes = await jd.read()
+#         if jd.filename.endswith(".pdf"):
+#             jd_text = extract_text_from_pdf(jd_bytes)
+#         elif jd.filename.endswith(".docx"):
+#             jd_text = extract_text_from_docx(jd_bytes)
+#         else:
+#             return JSONResponse({"error": "JD must be PDF or DOCX"}, status_code=400)
+
+#         ai_result = analyze_with_groq(resume_text, jd_text)
+
+#         if ai_result["match_score"] >= 80:
+#             ai_result["summary"] = "✅ Strong match: " + ai_result["summary"]
+#         else:
+#             ai_result["summary"] = "⚠️ Weak match: " + ai_result["summary"]
+
+#         report = {
+#             "resume_filename": resume.filename,
+#             "jd_filename": jd.filename,
+#             "match_score": ai_result["match_score"],
+#             "matched_skills": ai_result["matched_skills"],
+#             "missing_skills": ai_result["missing_skills"],
+#             "summary": ai_result["summary"]
+#         }
+
+#         return report
+
+#     except Exception as e:
+#         return JSONResponse({"error": str(e)}, status_code=500)
+
+
+
+
+
+##############################   the updated code for creating link with render web app###################
+
+
 import os
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import JSONResponse
@@ -267,7 +402,6 @@ from docx import Document
 import io
 import json
 from groq import Groq
-import os
 from dotenv import load_dotenv
 
 # ------------------- LOAD ENVIRONMENT VARIABLES -------------------
@@ -314,7 +448,7 @@ Tasks:
 3. List missing or weak skills.
 4. Explain why the score is high or low.
 
-IMPORTANT: Return output as **valid JSON ONLY**, strictly in this format:
+IMPORTANT: Return output as valid JSON ONLY in this format:
 
 {{
   "match_score": <integer>,
@@ -386,3 +520,8 @@ async def analyze_resume_and_jd(resume: UploadFile = File(...), jd: UploadFile =
 
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
+
+# ------------------- RUN FOR LOCAL TESTING -------------------
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
