@@ -226,15 +226,14 @@
 ###########################  UPDATED CODE      ####################
 
 
-
 import streamlit as st
 import requests
 import json
 import os
 
 # ------------------- CONFIGURE BACKEND URL -------------------
-# Replace the URL below with your Render backend URL
-API_URL = os.getenv("API_URL", "https://resume-backend.onrender.com/analyze/")
+# ✅ Updated to your deployed backend URL
+API_URL = os.getenv("API_URL", "https://resume-backend-q33z.onrender.com/analyze/")
 
 # ------------------- STREAMLIT PAGE SETUP -------------------
 st.set_page_config(
