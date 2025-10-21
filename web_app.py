@@ -225,85 +225,45 @@
 
 ###########################  UPDATED CODE      ####################
 
-
 import streamlit as st
 import requests
 import json
-import os
 
 # ------------------- CONFIGURE BACKEND URL -------------------
-# ✅ Updated to your deployed backend URL
-API_URL = os.getenv("API_URL", "https://resume-backend-q33z.onrender.com/analyze/")
+API_URL = "https://resume-backend-q33z.onrender.com/analyze/"
 
 # ------------------- STREAMLIT PAGE SETUP -------------------
-st.set_page_config(
-    page_title="AI Resume–JD Analyzer",
-    page_icon="🧠",
-    layout="centered",
-)
+st.set_page_config(page_title="AI Resume Matcher", layout="centered")
 
-st.title("🧠 AI Resume–Job Description Analyzer")
-st.write(
-    "Upload your **Resume (PDF/DOCX)** and **Job Description (PDF/DOCX)** to analyze the match score, matched skills, and summary."
-)
+st.title("🧠 AI Resume vs Job Description Analyzer")
+st.write("Upload your **Resume** and **Job Description** to check compatibility instantly.")
 
-# ------------------- FILE UPLOADS -------------------
-resume_file = st.file_uploader("📄 Upload Resume", type=["pdf", "docx"])
-jd_file = st.file_uploader("🧾 Upload Job Description", type=["pdf", "docx"])
+# ------------------- FILE UPLOAD -------------------
+resume_file = st.file_uploader("📄 Upload your Resume (PDF or DOCX)", type=["pdf", "docx"])
+jd_file = st.file_uploader("📝 Upload Job Description (PDF or DOCX)", type=["pdf", "docx"])
 
-# ------------------- ANALYZE BUTTON -------------------
-if st.button("🚀 Analyze"):
+if st.button("🚀 Analyze Match"):
     if not resume_file or not jd_file:
-        st.warning("Please upload both Resume and Job Description.")
+        st.warning("⚠️ Please upload both Resume and Job Description before clicking Analyze.")
     else:
-        try:
-            # Prepare files for FastAPI POST request
+        with st.spinner("Analyzing... Please wait ⏳"):
             files = {
-                "resume": (resume_file.name, resume_file.getvalue(), resume_file.type),
-                "jd": (jd_file.name, jd_file.getvalue(), jd_file.type),
+                "resume": (resume_file.name, resume_file, resume_file.type),
+                "jd": (jd_file.name, jd_file, jd_file.type),
             }
+            try:
+                response = requests.post(API_URL, files=files)
+                if response.status_code == 200:
+                    result = response.json()
 
-            # Send POST request to backend
-            with st.spinner("Analyzing files... Please wait ⏳"):
-                response = requests.post(API_URL, files=files, timeout=60)
+                    st.subheader("📊 Match Report")
+                    st.metric("Match Score", f"{result['match_score']}%")
 
-            # Handle API response
-            if response.status_code == 200:
-                result = response.json()
-                st.success("✅ Analysis Complete!")
-
-                # Display match score
-                st.subheader("📊 Match Report")
-                st.metric("Match Score", f"{result.get('match_score', 0)}%")
-
-                # Display matched skills
-                st.subheader("✅ Matched Skills")
-                matched_skills = result.get("matched_skills", [])
-                if matched_skills:
-                    st.write(", ".join(matched_skills))
+                    st.write("**✅ Matched Skills:**", ", ".join(result["matched_skills"]) or "None")
+                    st.write("**❌ Missing Skills:**", ", ".join(result["missing_skills"]) or "None")
+                    st.info(result["summary"])
                 else:
-                    st.write("No matched skills found.")
+                    st.error(f"❌ Error: {response.text}")
 
-                # Display missing skills
-                st.subheader("⚠️ Missing Skills")
-                missing_skills = result.get("missing_skills", [])
-                if missing_skills:
-                    st.write(", ".join(missing_skills))
-                else:
-                    st.write("No missing skills found.")
-
-                # Display summary
-                st.subheader("🧾 Summary")
-                st.write(result.get("summary", "No summary available."))
-
-            else:
-                st.error(f"❌ API Error: {response.status_code}")
-                try:
-                    st.json(response.json())
-                except:
-                    st.write(response.text)
-
-        except requests.exceptions.RequestException as e:
-            st.error(f"⚠️ Connection Error: Could not reach the API. {e}")
-        except Exception as e:
-            st.error(f"⚠️ Something went wrong: {e}")
+            except Exception as e:
+                st.error(f"⚠️ Something went wrong: {e}")
